@@ -42,16 +42,20 @@ const Modal: React.FC<ModalProps> = ({ isVisible, onClose }) => {
       url = `http://127.0.0.1:8000/insert/person`;
       formData.append('name', personName);
       formData.append('relation', therelation);
-      formData.append('occupation', theoccupation);
-      formData.append('description', personDescription);
+      formData.append('occupation', "");
+      formData.append('description', "");
     } else if (activeTab === 2) {
-      url = `http://127.0.0.1:8000/insert/place`;
-      formData.append('place_name', placeName);
-      formData.append('place_description', placeDescription);
+      url = `http://127.0.0.1:8000/insert/person`;
+      formData.append('name', personName);
+      formData.append('relation', therelation);
+      formData.append('occupation', "");
+      formData.append('description', "");
     } else if (activeTab === 3) {
-      url = `http://127.0.0.1:8000/insert/memory`;
-      formData.append('date', thedate);
-      formData.append('description', memoryDescription);
+      url = `http://127.0.0.1:8000/insert/person`;
+      formData.append('name', personName);
+      formData.append('relation', therelation);
+      formData.append('occupation', "");
+      formData.append('description', "");
     }
 
     const response = await axios.post(url, formData, {
@@ -81,7 +85,7 @@ const Modal: React.FC<ModalProps> = ({ isVisible, onClose }) => {
                 </div>
               </IconContext.Provider>
             </div>
-            Add a new place, person, or memory
+            Learn a new module
           </div>
           <div role="tablist" className="tabs tabs-lifted mb-6">
             <input
@@ -89,21 +93,21 @@ const Modal: React.FC<ModalProps> = ({ isVisible, onClose }) => {
               name="my_tabs_2"
               role="tab"
               className="tab"
-              aria-label="Person"
+              aria-label="History"
               checked={activeTab === 1}
               onChange={() => handleTabChange(1)}
             />
             <div role="tabpanel" className={`tab-content bg-base-100 border-base-300 rounded-box p-6 ${activeTab === 1 ? '' : 'hidden'}`}>
               <div className="mb-4">
                 <label className="input input-bordered flex items-center gap-2">
-                  Name:
+                  Lesson
                   <input type="text" className="grow" placeholder="Daisy" value={personName} onChange={(e) => setPersonName(e.target.value)} />
                 </label>
               </div>
               <div className="mb-4">
                 <label className="input input-bordered flex items-center gap-2">
-                  Relation:
-                  <input type="text" className="grow" placeholder="Friend" value={therelation} onChange={(e) => setRelation(e.target.value)} />
+                  Date
+                  <input type="date" className="grow" placeholder="Friend" value={therelation} onChange={(e) => setRelation(e.target.value)} />
                 </label>
               </div>
               <div className="mb-4">
@@ -111,42 +115,33 @@ const Modal: React.FC<ModalProps> = ({ isVisible, onClose }) => {
                   <input type="file" className="file-input file-input-primary file-input-bordered w-full max-w-xs" accept="image/*" onChange={handleImageUpload} />
                 </label>
               </div>
-              <div className="mb-4">
-                <label className="input input-bordered flex items-center gap-2">
-                  Occupation:
-                  <input type="text" className="grow" placeholder="Florist" value={theoccupation} onChange={(e) => setOccupation(e.target.value)} />
-                </label>
-              </div>
-              <div className="mb-4">
-                <textarea className="textarea-md textarea textarea-bordered w-full" placeholder="What memory would you like to share?" value={personDescription} onChange={(e) => setPersonDescription(e.target.value)}></textarea>
-              </div>
             </div>
-
             <input
               type="radio"
               name="my_tabs_2"
               role="tab"
               className="tab"
-              aria-label="Place"
+              aria-label="Science"
               checked={activeTab === 2}
               onChange={() => handleTabChange(2)}
             />
-            <div role="tabpanel" className={`tab-content bg-base-100 border-base-300 rounded-box p-6 ${activeTab === 2 ? '' : 'hidden'}`}>
+                       <div role="tabpanel" className={`tab-content bg-base-100 border-base-300 rounded-box p-6 ${activeTab === 1 ? '' : 'hidden'}`}>
               <div className="mb-4">
                 <label className="input input-bordered flex items-center gap-2">
-                  Name of Place:
-                  <input type="text" className="grow" placeholder="Misty's Florals" value={placeName} onChange={(e) => setPlaceName(e.target.value)} />
+                  Lesson
+                  <input type="text" className="grow" placeholder="Daisy" value={personName} onChange={(e) => setPersonName(e.target.value)} />
                 </label>
               </div>
-              
+              <div className="mb-4">
+                <label className="input input-bordered flex items-center gap-2">
+                  Date
+                  <input type="date" className="grow" placeholder="Friend" value={therelation} onChange={(e) => setRelation(e.target.value)} />
+                </label>
+              </div>
               <div className="mb-4">
                 <label className="flex flex-col gap-2">
                   <input type="file" className="file-input file-input-primary file-input-bordered w-full max-w-xs" accept="image/*" onChange={handleImageUpload} />
                 </label>
-              </div>
-
-              <div className="mb-4">
-                <textarea className="textarea-md textarea textarea-bordered w-full" placeholder="Description" value={placeDescription} onChange={(e) => setPlaceDescription(e.target.value)}></textarea>
               </div>
             </div>
 
@@ -155,19 +150,27 @@ const Modal: React.FC<ModalProps> = ({ isVisible, onClose }) => {
               name="my_tabs_2"
               role="tab"
               className="tab"
-              aria-label="Memory"
+              aria-label="English"
               checked={activeTab === 3}
               onChange={() => handleTabChange(3)}
             />
-            <div role="tabpanel" className={`tab-content bg-base-100 border-base-300 rounded-box p-6 ${activeTab === 3 ? '' : 'hidden'}`}>
+            <div role="tabpanel" className={`tab-content bg-base-100 border-base-300 rounded-box p-6 ${activeTab === 1 ? '' : 'hidden'}`}>
               <div className="mb-4">
                 <label className="input input-bordered flex items-center gap-2">
-                  Date:
-                  <input type="text" className="grow" placeholder="DD-MM-YYYY" value={thedate} onChange={(e) => setDate(e.target.value)} />
+                  Lesson
+                  <input type="text" className="grow" placeholder="Daisy" value={personName} onChange={(e) => setPersonName(e.target.value)} />
                 </label>
               </div>
               <div className="mb-4">
-                <textarea className="textarea-md textarea textarea-bordered w-full" placeholder="What memory would you like to share?" value={memoryDescription} onChange={(e) => setMemoryDescription(e.target.value)}></textarea>
+                <label className="input input-bordered flex items-center gap-2">
+                  Date
+                  <input type="date" className="grow" placeholder="Friend" value={therelation} onChange={(e) => setRelation(e.target.value)} />
+                </label>
+              </div>
+              <div className="mb-4">
+                <label className="flex flex-col gap-2">
+                  <input type="file" className="file-input file-input-primary file-input-bordered w-full max-w-xs" accept="image/*" onChange={handleImageUpload} />
+                </label>
               </div>
             </div>
           </div>

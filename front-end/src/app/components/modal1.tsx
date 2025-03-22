@@ -1,5 +1,6 @@
 import React, { useState, useEffect, ChangeEvent } from 'react';
 import axios from 'axios'; 
+import { useRouter } from "next/navigation";
 
 interface ModalProps {
   isVisible: boolean;
@@ -20,6 +21,8 @@ const Modal1: React.FC<ModalProps> = ({ isVisible, onClose, name, description, r
   const [newOccupation, setNewOccupation] = useState(occupation);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
 
+  const router = useRouter();
+
   const handleImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -34,8 +37,10 @@ const Modal1: React.FC<ModalProps> = ({ isVisible, onClose, name, description, r
     setNewOccupation(occupation);
   }, [name, description, relation, occupation]);
 
-  const handleUpdateButtonClick = () => {
-    setIsEditing(true);
+
+
+  const handleClick = () => {
+    router.push("/learn_audio"); // Change "/about" to your desired route
   };
 
   const handleCancelClick = () => {
@@ -95,6 +100,8 @@ const Modal1: React.FC<ModalProps> = ({ isVisible, onClose, name, description, r
 
   if (!isVisible) return null;
 
+
+
   return (
     <div className='fixed inset-0 bg-black bg-opacity-45 backdrop-blur flex justify-center items-center z-50'>
       <div className='lg:w-[1000px] w-96 m-auto'>
@@ -104,53 +111,31 @@ const Modal1: React.FC<ModalProps> = ({ isVisible, onClose, name, description, r
               <div className='mr-2'>
                 <div className="avatar flex-col mt-10">
                   <div className="w-60 rounded-xl">
-                    {image_url ? (
+    
                       <img src={image_url} className='object-cover w-full h-full' />
-                    ) : (
-                      <img src="https://img.daisyui.com/images/stock/photo-1494232410401-ad00d5433cfa.jpg" className='object-cover w-full h-full' />
-                    )}
+
                   </div>
-                  {isEditing ? (
+      
                     <>
-                      <input type="file" className="file-input file-input-primary file-input-bordered w-full max-w-xs mt-3 mb-2" accept="image/*" onChange={handleImageUpload} />
-                      <button className='btn w-64 bg-warning mr-6 mt-4' onClick={handleSubmit2}>Save Changes</button>
-                      <button className='btn w-64 bg-error mr-6 mt-4' onClick={handleCancelClick}>Cancel</button>
+                      <button className='btn w-64 bg-success mr-6 mt-4' onClick={handleClick}>Start learning</button>
+                      <button className="btn w-64 bg-warning mr-6 mt-4" onClick={handleSubmit1}>Delete Module</button>
                     </>
-                  ) : (
-                    <>
-                      <button className='btn w-64 bg-warning mr-6 mt-4' onClick={handleUpdateButtonClick}>Update Person</button>
-                      <button className="btn w-64 bg-warning mr-6 mt-4" onClick={handleSubmit1}>Delete Person</button>
-                    </>
-                  )}
                 </div>
               </div>
               <div className='mt-10'>
                 <div className='flex mb-4 justify-between'>
                   <div className='flex-col lg:flex'>
-                    {isEditing ? (
-                      <input type="text" className="input input-bordered font-extrabold text-3xl w-56 mb-3 mr-16" placeholder="Name" value={newName} onChange={(e) => setNewName(e.target.value)} />
-                    ) : (
+
                       <div className='font-extrabold text-3xl'>{name}</div>
-                    )}
-                    {isEditing ? (
-                      <input type="text" className="input input-xs w-32 input-bordered ml-2" placeholder="Relation" value={newRelation} onChange={(e) => setNewRelation(e.target.value)} />
-                    ) : (
+
                       <div className='mt-2 ml-1 mr-12 text-xl'>{relation}</div>
-                    )}
+
                   </div>
-                  {isEditing ? (
-                    <input type="text" className="input input-sm input-bordered mt-3 ml-36" placeholder="Occupation" value={newOccupation} onChange={(e) => setNewOccupation(e.target.value)} />
-                  ) : (
-                    <div className='text-md mr-8 mt-1'>{occupation}</div>
-                  )}
-                </div>
+                    <div className='text-md mr-8 mt-1'>Proficiency: {occupation}</div>
+                </div> 
                 <div className='card bg-base-100 shadow-xl overflow-auto max-h-[80vh] mt-8'>
                   <div className='card-body'>
-                    {isEditing ? (
-                      <textarea className="textarea textarea-bordered card-body h-56" placeholder="What memory would you like to share?" value={newDescription} onChange={(e) => setNewDescription(e.target.value)}></textarea>
-                    ) : (
                       <div className='mt-2 ml-3'>{description}</div>
-                    )}
                   </div>
                 </div>
               </div>

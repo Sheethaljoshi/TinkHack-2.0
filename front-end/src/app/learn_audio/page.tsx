@@ -5,10 +5,10 @@ import { MdEmojiPeople } from "react-icons/md";
 import { FaMapMarkedAlt } from "react-icons/fa";
 import { FaHandHoldingHeart } from "react-icons/fa";
 import { FaUserDoctor } from "react-icons/fa6";
-import CardPage from "./card"
 import Link from 'next/link';
 import Modalchat from "../components/modalchat";
 import { useState } from "react";
+import ContentPage from "./learncontent";
 
 export default function Places() {
 
@@ -17,8 +17,9 @@ export default function Places() {
     return (
         <div className="drawer lg:drawer-open">
           <input id="my-drawer-2" type="checkbox" className="drawer-toggle" />
-          <div className="drawer-content flex m-6">
-     <CardPage/>
+          <div className="drawer-content flex flex-col m-6">
+            <div className="p-4 text-3xl font-bold">Let&apos;s Learn History!</div>
+            <ContentPage/>
       <label htmlFor="my-drawer-2" className="btn btn-primary drawer-button lg:hidden">|||</label>
     
     </div> 
@@ -30,9 +31,9 @@ export default function Places() {
         <div className='items-center mb-8'>
         <li className='p-2 '><Link href="/" className='text-lg flex justify-center font-bold'><div ><FaHome /></div>Home</Link></li>
         <li className='p-2'><Link href="/people" className='text-lg flex justify-center font-bold'><div><MdEmojiPeople /></div>History</Link></li>
-        <li className='p-2'><Link href="/" className='text-lg flex justify-center font-bold'><div><FaMapMarkedAlt /></div>Science</Link></li>
-         <li className='p-2'><Link href="/" className='text-lg flex justify-center font-semibold'><div><FaHandHoldingHeart /></div>English</Link></li>
-        <li className='p-2'><Link href="/" className='text-lg flex justify-center font-semibold'><div><FaUserDoctor /></div>Diagnostics</Link></li>
+        <li className='p-2'><Link href="/places" className='text-lg flex justify-center font-bold'><div><FaMapMarkedAlt /></div>Science</Link></li>
+         <li className='p-2'><Link href="/memories" className='text-lg flex justify-center font-semibold'><div><FaHandHoldingHeart /></div>English</Link></li>
+        <li className='p-2'><Link href="/personal" className='text-lg flex justify-center font-semibold'><div><FaUserDoctor /></div>Diagnostics</Link></li>
         </div>
         <div className="flex mt-48 justify-between">
         <div className="ml-4"><button onClick={()=>setShowModalchat(true)} className="btn btn-primary" >Assistant</button></div>
