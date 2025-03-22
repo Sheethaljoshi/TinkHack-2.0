@@ -1,6 +1,6 @@
 import React from 'react';
 
-const DiaryEntry: React.FC = () => {
+const JournalEntry: React.FC = () => {
   return (
     <div className="container min-w-96">
       <div className="card bg-base-100 shadow-xl">
@@ -21,4 +21,4 @@ const DiaryEntry: React.FC = () => {
   );
 };
 
-export default DiaryEntry;
+export default JournalEntry;

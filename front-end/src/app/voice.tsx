@@ -14,37 +14,37 @@ const VoiceAssistant: React.FC = () => {
   if (!isMounted) return null; // Avoid hydration errors
 
   return (
-    <div className="max-w-xs mx-auto p-4 bg-base-100 shadow-lg rounded-xl">
-      <div className="text-xl font-bold text-[#343232] mb-2 text-center">
+    <div className="max-w-3xl  mx-auto p-14 bg-base-100 shadow-xl rounded-full">
+      <div className="text-2xl font-extrabold text-[#343232] mb-4 text-center">
         Having a bad day?
       </div>
 
       <div className="flex justify-center">
         <button 
-          className="btn btn-primary" 
+          className="btn btn-lg btn-primary px-6 py-3 text-xl flex items-center gap-3" 
           onClick={() => modalRef.current?.showModal()}
         >
           Talk to Remi 
-          <IconContext.Provider value={{ color: "black", className: "global-class-name", size:"1.40em" }}>
+          <IconContext.Provider value={{ color: "black", className: "global-class-name", size:"1.8em" }}>
             <div>
               <BsChatLeftHeart />
             </div>
           </IconContext.Provider>
         </button>
-
-        {/* Modal */}
-        <dialog ref={modalRef} id="my_modal_4" className="modal">
-          <div className="modal-box w-11/12 max-w-5xl">
-            <h3 className="font-bold text-lg">Hello!</h3>
-            <p className="py-4">Click the button below to close</p>
-            <div className="modal-action">
-              <form method="dialog">
-                <button className="btn">Close</button>
-              </form>
-            </div>
-          </div>
-        </dialog>
       </div>
+
+      {/* Larger Modal */}
+      <dialog ref={modalRef} id="my_modal_4" className="modal">
+        <div className="modal-box w-full max-w-3xl p-8">
+          <h3 className="font-bold text-2xl">Hello!</h3>
+          <p className="py-6 text-lg">Click the button below to close</p>
+          <div className="modal-action">
+            <form method="dialog">
+              <button className="btn btn-lg">Close</button>
+            </form>
+          </div>
+        </div>
+      </dialog>
     </div>
   );
 };

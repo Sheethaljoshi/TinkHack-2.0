@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import os
 import random
 import uuid
-from fastapi import FastAPI, HTTPException, File, UploadFile, Form
+from fastapi import FastAPI, HTTPException, File, Query, UploadFile, Form
 from pymongo import MongoClient
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -33,15 +33,47 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-cluster = MongoClient("mongodb+srv://sh33thal24:sh33thal24@cluster0.wfa7cip.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0", server_api=ServerApi('1'))
-db = cluster["dementia"]
-collection = db["fileids"]
+cluster = MongoClient("mongodb+srv://sh33thal24:devi@cluster0.42dks.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0", server_api=ServerApi('1'))
+db = cluster["Learners"]
+collection = db["Learner"]
 
 MODEL = "gpt-4o-mini"
 
 USER_EMAIL = "sh33thal24@gmail.com"
 
-# Route to fetch user memories
+from pymongo import MongoClient
+
+def insert_reminder(user_email: str, reminder_id: int, text: str, completed: bool):
+    user_data = collection.find_one({"email": user_email})
+    
+    if user_data:
+        # Add reminders field if not present
+        if "reminders" not in user_data:
+            user_data["reminders"] = []
+        
+        # Create reminder object
+        reminder = {"id": reminder_id, "text": text, "completed": completed}
+        
+        # Append new reminder
+        user_data["reminders"].append(reminder)
+        
+        # Update the document
+        collection.update_one({"email": user_email}, {"$set": {"reminders": user_data["reminders"]}})
+        return {"message": "Reminder added successfully."}
+    else:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+@app.post("/add_reminder")
+def add_reminder(
+    email: str,
+    reminder_id: int = Query(..., alias="id"),
+    text: str = Query(...),
+    completed: bool = Query(...)
+):
+    response = insert_reminder(email, reminder_id, text, completed)
+    return response
+
+
 @app.get("/memories/")
 async def get_memories():
     user_data = collection.find_one({"email": USER_EMAIL}, {"_id": 0, "mem_data": 1})  # Fetch only mem_data
