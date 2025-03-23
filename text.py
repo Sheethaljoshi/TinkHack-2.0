@@ -694,6 +694,118 @@ async def generate_flashcards():
     except Exception as e:
         print(f"Error in generate_flashcards: {str(e)}")
         print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))# Directory where PDFs are stored
+PDF_DIRECTORY = "pdf_files"
+AUDIO_DIRECTORY = "audio_files"
+os.makedirs(PDF_DIRECTORY, exist_ok=True)
+os.makedirs(AUDIO_DIRECTORY, exist_ok=True)
+
+# OpenAI API Key
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+client = OpenAI(api_key=OPENAI_API_KEY)
+
+class SummaryRequest(BaseModel):
+    filename: str
+    level: str
+
+def extract_text_from_pdf(pdf_filename):
+    """Extracts text from a locally stored PDF file."""
+    pdf_path = os.path.join(PDF_DIRECTORY, pdf_filename)
+
+    if not os.path.exists(pdf_path):
+        raise FileNotFoundError(f"PDF file '{pdf_filename}' not found in {PDF_DIRECTORY}.")
+
+    with open(pdf_path, "rb") as file:
+        reader = PyPDF2.PdfReader(file)
+        text = "\n".join(page.extract_text() for page in reader.pages if page.extract_text())
+
+    return text[:4000]  # Limit text to avoid API token limits
+
+def generate_summary(text, level):
+    """Generates a summary at the specified difficulty level using OpenAI."""
+    prompts = {
+        "beginner": "Narrate this content in simple and engaging terms for a curious learner.",
+        "intermediate": "Explain this content with structured guidance for a college student.",
+        "advanced": "Deliver an in-depth explanation for an advanced student or professional."
+    }
+    prompt = prompts.get(level, prompts["beginner"])
+
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": prompt},
+            {"role": "user", "content": f"Summarize this content: {text}"}
+        ]
+    )
+    return response.choices[0].message.content
+
+def generate_story(text):
+    """Generates a fun, story-based explanation of the content."""
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": "Convert this educational content into a storytelling format that makes learning fun."},
+            {"role": "user", "content": f"Tell a story that teaches this topic: {text}"}
+        ]
+    )
+    return response.choices[0].message.content.strip()
+
+def generate_mnemonic(text):
+    """Generates a mnemonic or song to help remember the content."""
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": "Create a catchy mnemonic or song to help remember key information."},
+            {"role": "user", "content": f"Generate a mnemonic or short song for: {text}"}
+        ]
+    )
+    return response.choices[0].message.content.strip()
+
+def text_to_speech(text, output_audio_path):
+    """Converts text to speech and saves it as an audio file."""
+    speech_file_path = os.path.join(AUDIO_DIRECTORY, output_audio_path)
+    
+    with client.audio.speech.with_streaming_response.create(
+        model="gpt-4o-mini-tts",
+        voice="coral",
+        input=text,
+        instructions="Narrate this content in a lively and engaging way."
+    ) as response:
+        response.stream_to_file(speech_file_path)
+
+    return speech_file_path
+
+# **API Endpoints**
+@app.get("/summary/{pdf_filename}/{level}")
+async def get_summary(pdf_filename: str, level: str = "beginner"):
+    """Generates a summary from a locally stored PDF."""
+    try:
+        text = extract_text_from_pdf(pdf_filename)
+        summary = generate_summary(text, level)
+
+        audio_filename = f"{pdf_filename}_summary.mp3"
+        audio_path = text_to_speech(summary, audio_filename)
+
+        return {"summary": summary, "audio_path": f"/download_audio/{audio_filename}"}
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/story/{pdf_filename}")
+async def get_story(pdf_filename: str):
+    """Generates an educational story from a PDF."""
+    try:
+        text = extract_text_from_pdf(pdf_filename)
+        story = generate_story(text)
+
+        audio_filename = f"{pdf_filename}_story.mp3"
+        audio_path = text_to_speech(story, audio_filename)
+
+        return {"story": story, "audio_path": f"/download_audio/{audio_filename}"}
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/start-lecture/")
@@ -2016,6 +2128,20 @@ def get_summary_of_chats():
     sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
     
     # Calculate average sentiment diversity
+# Mount the audio files directory properly for static file serving
+app.mount("/audio_files", StaticFiles(directory=AUDIO_DIRECTORY), name="audio_files")
+
+@app.get("/download_audio/{filename}")
+async def download_audio(filename: str):
+    """Downloads the generated speech audio file."""
+    file_path = os.path.join(AUDIO_DIRECTORY, filename)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Audio file not found")
+    
+    # Return the direct URL instead of a JSON response
+    return {"audio_url": f"/audio_files/{filename}"}
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8000)

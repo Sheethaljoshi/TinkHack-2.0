@@ -60,7 +60,7 @@ const Modal: React.FC<ModalProps> = ({ isVisible, onClose }) => {
         <div className='bg-base-200 p-7 rounded-3xl flex flex-col'>
           <div className='mb-7 mt-2 text-lg flex'>
             <div className='mr-2'>
-              <IconContext.Provider value={{ size: 23 }}>
+              <IconContext.Provider value={{ size: '23' }}>
                 <div>
                   <RiHeartAdd2Line />
                 </div>

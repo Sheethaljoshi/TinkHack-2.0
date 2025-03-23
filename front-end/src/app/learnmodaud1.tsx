@@ -10,7 +10,7 @@ const MnemonicComponent = () => {
     const formData = new FormData();
     formData.append("input_text", input);
   
-    const response = await fetch("http://127.0.0.1:8000/generate-mnemonic", {
+    const response = await fetch("http://127.0.0.1:8000/generate-mnemonic/", {
       method: "POST",
       body: formData,
     });

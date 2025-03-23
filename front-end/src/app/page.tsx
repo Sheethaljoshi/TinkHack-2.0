@@ -11,6 +11,20 @@ import Link from 'next/link';
 import HomeContent from "./home";
 import Modalchat from "./components/modalchat";
 
+const links = [
+  {
+    name: "Story",
+    href: "/story",
+    description: "Generate stories based on your memories.",
+  },
+  {
+    name: "PDF Learning Tools",
+    href: "/learn_pdf",
+    description: "Upload PDFs and generate summaries, stories, and mnemonics.",
+  },
+  // ... other existing links ...
+];
+
 export default function Home() {
 
   const [showModalchat, setShowModalchat] = useState(false);
