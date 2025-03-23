@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from groq import Groq
 import uuid
 import PyPDF2
-from fastapi import FastAPI, HTTPException, File, Query, UploadFile, Form
+from fastapi import FastAPI, HTTPException, File, Query, UploadFile, Form, Request
 from pymongo import MongoClient
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -19,7 +19,7 @@ from pymongo.server_api import ServerApi
 import base64
 from fastapi.responses import FileResponse, JSONResponse
 import requests
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel
 from datetime import datetime, timedelta, timezone
 import random
@@ -46,7 +46,8 @@ MODEL = "gpt-4o-mini"
 
 USER_EMAIL = "sh33thal24@gmail.com"
 
-
+DID_API_KEY = os.getenv("DID_API_KEY")
+DID_API_URL = "https://api.d-id.com/talks"
 
 class ToggleRequest(BaseModel):
     email: str
@@ -695,6 +696,1326 @@ async def generate_flashcards():
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/start-lecture/")
+async def start_lecture():
+    topics = [
+        "The Future of Artificial Intelligence",
+        "Quantum Computing and its Applications",
+        "The Evolution of Human Consciousness",
+        "The Intersection of Science and Philosophy",
+        "The Nature of Reality and Perception",
+        "Blockchain Technology and Decentralized Finance",
+        "Neuroscience and Brain-Computer Interfaces",
+        "The Ethics of Genetic Engineering",
+        "Climate Change Solutions and Sustainable Development",
+        "Space Exploration and Colonization"
+    ]
+    
+    # Map of topics to high-quality YouTube lecture videos
+    topic_videos = {
+        "The Future of Artificial Intelligence": "https://www.youtube.com/embed/kCc8FmEb1nY",
+        "Quantum Computing and its Applications": "https://www.youtube.com/embed/F_Riqjdh2oM",
+        "The Evolution of Human Consciousness": "https://www.youtube.com/embed/DDXQbU5IFPs",
+        "The Intersection of Science and Philosophy": "https://www.youtube.com/embed/hrcXM2Y7H0o",
+        "The Nature of Reality and Perception": "https://www.youtube.com/embed/lyu7v7nWzfo",
+        "Blockchain Technology and Decentralized Finance": "https://www.youtube.com/embed/bBC-nXj3Ng4",
+        "Neuroscience and Brain-Computer Interfaces": "https://www.youtube.com/embed/rA7Wmz5MkQA",
+        "The Ethics of Genetic Engineering": "https://www.youtube.com/embed/jAhjPd4uNFY",
+        "Climate Change Solutions and Sustainable Development": "https://www.youtube.com/embed/gUdtcx-6OBE",
+        "Space Exploration and Colonization": "https://www.youtube.com/embed/rhFK5_Nx9xY"
+    }
+    
+    # Select a random topic
+    selected_topic = random.choice(topics)
+    
+    # Get the video for the selected topic, or default to AI lecture if not found
+    video_url = topic_videos.get(selected_topic, "https://www.youtube.com/embed/kCc8FmEb1nY")
+    
+    # Log for debugging
+    print(f"Selected topic: {selected_topic}, Video URL: {video_url}")
+    
+    return {
+        "topic": selected_topic,
+        "video_url": video_url
+    }
+
+@app.post("/update-lecture-video/")
+async def update_lecture_video(request: Request):
+    try:
+        # Extract the text from the request
+        payload = await request.json()
+        text = payload.get("text", "")
+        
+        if not text or text.strip() == "":
+            # Return default AI video if text is empty
+            return {
+                "topic": "The Future of Artificial Intelligence",
+                "video_url": "https://www.youtube.com/embed/kCc8FmEb1nY"
+            }
+        
+        # Check if the text is a direct topic mention (single word or phrase without patterns)
+        direct_topic = text.strip()
+        text_lower = text.lower()
+        
+        # If it's a direct topic mention (like just typing "chemistry"), prioritize it
+        if len(direct_topic.split()) <= 3:
+            print(f"Possible direct topic mention: '{direct_topic}'")
+            # Search for a video on this topic
+            video_url = await search_youtube_video(direct_topic)
+            if video_url:
+                print(f"Found video for direct topic: {direct_topic}")
+                return {
+                    "topic": f"Lecture on {direct_topic.capitalize()}",
+                    "video_url": video_url
+                }
+        
+        # Continue with pattern matching and keyword extraction
+        # Expanded map of keywords to related videos
+        keyword_videos = {
+            # AI and computer science
+            "artificial intelligence": "https://www.youtube.com/embed/kCc8FmEb1nY",
+            "ai": "https://www.youtube.com/embed/kCc8FmEb1nY",
+            "machine learning": "https://www.youtube.com/embed/aircAruvnKk",
+            "neural networks": "https://www.youtube.com/embed/aircAruvnKk",
+            "deep learning": "https://www.youtube.com/embed/aircAruvnKk",
+            "computer science": "https://www.youtube.com/embed/SzJ46YA_RaA",
+            "programming": "https://www.youtube.com/embed/zOjov-2OZ0E",
+            "coding": "https://www.youtube.com/embed/zOjov-2OZ0E",
+            
+            # Physics and quantum
+            "quantum": "https://www.youtube.com/embed/F_Riqjdh2oM",
+            "quantum computing": "https://www.youtube.com/embed/F_Riqjdh2oM",
+            "physics": "https://www.youtube.com/embed/Xc4xYacTu-E",
+            "relativity": "https://www.youtube.com/embed/LKnqECcg6Gw",
+            "einstein": "https://www.youtube.com/embed/LKnqECcg6Gw",
+            
+            # Philosophy and consciousness
+            "consciousness": "https://www.youtube.com/embed/DDXQbU5IFPs",
+            "philosophy": "https://www.youtube.com/embed/hrcXM2Y7H0o",
+            "reality": "https://www.youtube.com/embed/lyu7v7nWzfo",
+            "perception": "https://www.youtube.com/embed/lyu7v7nWzfo",
+            "metaphysics": "https://www.youtube.com/embed/hrcXM2Y7H0o",
+            
+            # Finance and technology
+            "blockchain": "https://www.youtube.com/embed/bBC-nXj3Ng4",
+            "bitcoin": "https://www.youtube.com/embed/bBC-nXj3Ng4",
+            "cryptocurrency": "https://www.youtube.com/embed/bBC-nXj3Ng4",
+            "finance": "https://www.youtube.com/embed/PHe0bXAIuk0",
+            "economics": "https://www.youtube.com/embed/PHe0bXAIuk0",
+            
+            # Biology and neuroscience
+            "neuroscience": "https://www.youtube.com/embed/rA7Wmz5MkQA",
+            "brain": "https://www.youtube.com/embed/rA7Wmz5MkQA",
+            "biology": "https://www.youtube.com/embed/QnQe0xW_JY4",
+            "genetic": "https://www.youtube.com/embed/jAhjPd4uNFY",
+            "dna": "https://www.youtube.com/embed/jAhjPd4uNFY",
+            
+            # Environment and space
+            "climate": "https://www.youtube.com/embed/gUdtcx-6OBE",
+            "environment": "https://www.youtube.com/embed/gUdtcx-6OBE",
+            "space": "https://www.youtube.com/embed/rhFK5_Nx9xY",
+            "astronomy": "https://www.youtube.com/embed/rhFK5_Nx9xY",
+            "universe": "https://www.youtube.com/embed/rhFK5_Nx9xY",
+            
+            # Other topics
+            "history": "https://www.youtube.com/embed/Vufba_ZcoR0",
+            "art": "https://www.youtube.com/embed/ZSixo4Rlvb8",
+            "music": "https://www.youtube.com/embed/XZmGGAbHqa0",
+            "psychology": "https://www.youtube.com/embed/vo4pMVb0R6M",
+            "literature": "https://www.youtube.com/embed/MSYw502dJNY",
+            "mathematics": "https://www.youtube.com/embed/XFDM1ip5HdU",
+            "math": "https://www.youtube.com/embed/XFDM1ip5HdU"
+        }
+        
+        # Additional topic patterns for better matching
+        topic_patterns = {
+            r"talk about (.+)": lambda match: match.group(1),
+            r"tell me about (.+)": lambda match: match.group(1),
+            r"lecture on (.+)": lambda match: match.group(1),
+            r"explain (.+)": lambda match: match.group(1),
+            r"learn about (.+)": lambda match: match.group(1),
+            r"switch to (.+)": lambda match: match.group(1),
+            r"change topic to (.+)": lambda match: match.group(1),
+            r"show me (.+)": lambda match: match.group(1),
+            r"information on (.+)": lambda match: match.group(1)
+        }
+        
+        # Extract potential topic from patterns
+        extracted_topic = None
+        
+        # First try pattern matching for direct topic requests
+        import re
+        for pattern, extractor in topic_patterns.items():
+            match = re.search(pattern, text_lower)
+            if match:
+                extracted_topic = extractor(match)
+                print(f"Extracted topic from pattern: '{extracted_topic}'")
+                break
+        
+        # If we have an extracted topic, search YouTube for a video
+        if extracted_topic:
+            video_url = await search_youtube_video(extracted_topic)
+            if video_url:
+                # Generate a proper topic title based on the extracted text
+                groq_client = Groq()
+                topic_prompt = f"Generate a concise academic lecture title (5-12 words) about '{extracted_topic}'. Return ONLY the title, nothing else."
+                
+                try:
+                    topic_response = groq_client.chat.completions.create(
+                        model="llama-3.3-70b-versatile",
+                        messages=[
+                            {"role": "system", "content": "You are a helpful assistant that creates concise academic lecture titles."},
+                            {"role": "user", "content": topic_prompt}
+                        ]
+                    )
+                    topic_title = topic_response.choices[0].message.content.strip()
+                except Exception as e:
+                    print(f"Error generating topic title: {str(e)}")
+                    # Use a formatted version of the extracted topic as fallback
+                    topic_title = extracted_topic.strip().capitalize()
+                
+                return {
+                    "topic": topic_title,
+                    "video_url": video_url
+                }
+        
+        # If no matches found, try general search with the entire text
+        video_url = await search_youtube_video(text)
+        if video_url:
+            # Generate a topic title
+            groq_client = Groq()
+            topic_prompt = f"Generate a concise academic lecture title (5-12 words) about '{text}'. Return ONLY the title, nothing else."
+            
+            try:
+                topic_response = groq_client.chat.completions.create(
+                    model="llama-3.3-70b-versatile",
+                    messages=[
+                        {"role": "system", "content": "You are a helpful assistant that creates concise academic lecture titles."},
+                        {"role": "user", "content": topic_prompt}
+                    ]
+                )
+                topic = topic_response.choices[0].message.content.strip()
+            except Exception as e:
+                print(f"Error generating topic: {str(e)}")
+                topic = f"Lecture on {text.capitalize()}"
+            
+            return {
+                "topic": topic,
+                "video_url": video_url
+            }
+        
+        # If all else fails, use a fallback video
+        return {
+            "topic": "Understanding Intellectual Concepts",
+            "video_url": "https://www.youtube.com/embed/kCc8FmEb1nY"
+        }
+            
+    except Exception as e:
+        print(f"Error in update_lecture_video: {str(e)}")
+        print(traceback.format_exc())
+        
+        # Return a fallback YouTube video
+        return {
+            "topic": "Understanding Complex Concepts",
+            "video_url": "https://www.youtube.com/embed/kCc8FmEb1nY"
+        }
+
+# Function to search for YouTube videos
+async def search_youtube_video(query: str):
+    # Format the query for search
+    search_query = f"lecture {query} educational"
+    
+    try:
+        # Expanded video_ids with more specific topics, especially historical and cultural ones
+        video_ids = {
+            # Basic subjects
+            "chemistry": "0PSyiRXIEyM",
+            "physics": "Xc4xYacTu-E",
+            "math": "XFDM1ip5HdU",
+            "biology": "QnQe0xW_JY4",
+            "computer science": "SzJ46YA_RaA",
+            "history": "Vufba_ZcoR0",
+            "psychology": "vo4pMVb0R6M",
+            "literature": "MSYw502dJNY",
+            "art": "ZSixo4Rlvb8",
+            "music": "XZmGGAbHqa0",
+            "astronomy": "0rHUDWjR5gg",
+            "economics": "PHe0bXAIuk0",
+            "philosophy": "hrcXM2Y7H0o",
+            "sociology": "wlR-VsU6lVY",
+            
+            # Historical topics and figures
+            "world war 2": "DwKPFT-RioU",
+            "world war ii": "DwKPFT-RioU",
+            "ww2": "DwKPFT-RioU",
+            "cold war": "I79TpDe3Lgk",
+            "american revolution": "gzALIXcY4pg",
+            "french revolution": "5fJl_ZX91l0",
+            "russian revolution": "cV9G1QUIVak",
+            "industrial revolution": "xLhNMQx7gMA",
+            "renaissance": "Vufba_ZcoR0",
+            "civil rights movement": "URxwe6LPvkE",
+            
+            # Historical figures
+            "gandhi": "ept3c_1VqOE",
+            "mahatma gandhi": "ept3c_1VqOE",
+            "quit india": "ept3c_1VqOE",
+            "quit india gandhi": "ept3c_1VqOE",
+            "indian independence": "ept3c_1VqOE",
+            "martin luther king": "I47Y6VHc3Ms",
+            "mlk": "I47Y6VHc3Ms",
+            "nelson mandela": "UqoYmx_L-Xs",
+            "abraham lincoln": "DCKNDzrCXL8",
+            "napoleon": "5fJl_ZX91l0",
+            "einstein": "LKnqECcg6Gw",
+            "churchill": "TQRRyGK4DvU",
+            "hitler": "ATlila3e9Io",
+            "stalin": "cV9G1QUIVak",
+            "cleopatra": "VGMkEMbpuJk",
+            
+            # Cultural topics
+            "ancient egypt": "hO1tzmi1V5g",
+            "ancient rome": "46ZXl-V4qwY",
+            "ancient greece": "gFRxmi4uCGo",
+            "mayan civilization": "Q6eBJjdca14",
+            "chinese history": "ymI5Uv5cGU4",
+            "indian history": "ept3c_1VqOE",
+            "african history": "L5wbZT-i-5M",
+            "mesopotamia": "sohXPx_XZ6Y",
+            "ottoman empire": "GRC6jnKwt78",
+            "japanese history": "Jh6j6z_7qds",
+            
+            # Science specific
+            "quantum physics": "F_Riqjdh2oM",
+            "organic chemistry": "btu6t1RgoeY",
+            "calculus": "WsQQvHm37bE",
+            "genetics": "jAhjPd4uNFY",
+            "neuroscience": "rA7Wmz5MkQA",
+            "artificial intelligence": "kCc8FmEb1nY",
+            "climate change": "gUdtcx-6OBE",
+            "cybersecurity": "inWWhr5tnEA",
+            "blockchain": "bBC-nXj3Ng4"
+        }
+        
+        # Process the query to standardize it
+        query_lower = query.lower().strip()
+        
+        # First, check for exact matches
+        if query_lower in video_ids:
+            print(f"Found exact match for: '{query_lower}'")
+            return f"https://www.youtube.com/embed/{video_ids[query_lower]}"
+        
+        # Check for queries containing multiple topics (like "quit india gandhi")
+        # We'll check if any of our keys are fully contained in the query
+        for topic, video_id in video_ids.items():
+            if len(topic) > 4 and topic in query_lower:
+                print(f"Found topic '{topic}' in query: '{query_lower}'")
+                return f"https://www.youtube.com/embed/{video_id}"
+        
+        # Check if any word in the query matches our keys
+        query_words = query_lower.split()
+        for word in query_words:
+            if word in video_ids and len(word) > 3:  # Only match significant words
+                print(f"Found word '{word}' in query: '{query_lower}'")
+                return f"https://www.youtube.com/embed/{video_ids[word]}"
+        
+        # If no match found, try to categorize with GROQ
+        try:
+            # Get a broader category from GROQ
+            groq_client = Groq()
+            classification_prompt = f"""
+            Based on this query: "{query}", identify the MOST SPECIFIC category from this list:
+            - World History
+            - American History
+            - European History
+            - Asian History (including India, China, Japan)
+            - African History
+            - Ancient Civilizations
+            - Physics
+            - Chemistry
+            - Biology
+            - Mathematics
+            - Computer Science
+            - Philosophy
+            - Literature
+            - Art
+            - Music
+            - Psychology
+            - Economics
+            - Political Science
+            
+            Return ONLY the most specific category name, nothing else.
+            """
+            
+            classification_response = groq_client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant that categorizes topics accurately."},
+                    {"role": "user", "content": classification_prompt}
+                ]
+            )
+            category = classification_response.choices[0].message.content.strip().lower()
+            print(f"GROQ classified '{query}' as: {category}")
+            
+            # Map broader categories to videos
+            category_mapping = {
+                "world history": "Vufba_ZcoR0",
+                "american history": "gzALIXcY4pg",
+                "european history": "5fJl_ZX91l0", 
+                "asian history": "ept3c_1VqOE",  # Gandhi/India video as default for Asian history
+                "african history": "L5wbZT-i-5M",
+                "ancient civilizations": "hO1tzmi1V5g",
+                "physics": "Xc4xYacTu-E",
+                "chemistry": "0PSyiRXIEyM",
+                "biology": "QnQe0xW_JY4",
+                "mathematics": "XFDM1ip5HdU",
+                "computer science": "SzJ46YA_RaA",
+                "philosophy": "hrcXM2Y7H0o",
+                "literature": "MSYw502dJNY",
+                "art": "ZSixo4Rlvb8",
+                "music": "XZmGGAbHqa0",
+                "psychology": "vo4pMVb0R6M",
+                "economics": "PHe0bXAIuk0",
+                "political science": "5v_CcLEYRiA"
+            }
+            
+            for cat, vid in category_mapping.items():
+                if cat in category.lower():
+                    return f"https://www.youtube.com/embed/{vid}"
+            
+            # Finally try to get a more specific suggestion from GROQ
+            topic_prompt = f"""
+            For the query "{query}", what specific educational YouTube video would be most relevant?
+            Choose one from this list and return ONLY its number (1-5):
+            
+            1. Gandhi and the Quit India Movement (ept3c_1VqOE)
+            2. World History Overview (Vufba_ZcoR0)
+            3. Physics Fundamentals (Xc4xYacTu-E)
+            4. Introduction to Philosophy (hrcXM2Y7H0o)
+            5. Understanding Computer Science (SzJ46YA_RaA)
+            """
+            
+            topic_response = groq_client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant that matches topics to videos."},
+                    {"role": "user", "content": topic_prompt}
+                ]
+            )
+            choice = topic_response.choices[0].message.content.strip()
+            print(f"GROQ suggested choice: {choice}")
+            
+            # Extract the number from the response
+            import re
+            match = re.search(r"[1-5]", choice)
+            if match:
+                video_options = {
+                    "1": "ept3c_1VqOE",  # Gandhi
+                    "2": "Vufba_ZcoR0",  # World History
+                    "3": "Xc4xYacTu-E",  # Physics
+                    "4": "hrcXM2Y7H0o",  # Philosophy
+                    "5": "SzJ46YA_RaA"   # Computer Science
+                }
+                return f"https://www.youtube.com/embed/{video_options[match.group(0)]}"
+            
+        except Exception as e:
+            print(f"Error in GROQ classification: {str(e)}")
+            
+        # Final fallback - default to world history for unmatched queries
+        return "https://www.youtube.com/embed/Vufba_ZcoR0"
+    
+    except Exception as e:
+        print(f"Error in YouTube search: {str(e)}")
+        print(traceback.format_exc())
+        # Default to world history
+        return "https://www.youtube.com/embed/Vufba_ZcoR0"
+
+@app.post("/chat-with-lecturer/")
+async def chat_with_lecturer(message: dict):
+    try:
+        if not message or "message" not in message:
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "Message is required", "response": "I didn't receive a message. Could you please try again?"}
+            )
+            
+        groq_client = Groq()
+        response = groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {"role": "system", "content": "You are an engaging and intellectual lecturer who makes complex topics interesting and accessible. Keep responses concise and conversational."},
+                {"role": "user", "content": message.get("message", "")}
+            ]
+        )
+        
+        return {
+            "response": response.choices[0].message.content
+        }
+        
+    except Exception as e:
+        print(f"Error in chat_with_lecturer: {str(e)}")
+        print(traceback.format_exc())
+        return JSONResponse(
+            status_code=500,
+            content={"detail": str(e), "response": "I'm experiencing some technical difficulties. Please try again in a moment."}
+        )
+
+@app.post("/save-remi-chat/")
+async def save_remi_chat(request: Request):
+    try:
+        body = await request.json()
+        user_message = body.get("message", "")
+        assistant_message = body.get("response", "")
+        email = body.get("email", "sh33thal24@gmail.com")  # Default email if not provided
+        
+        if not user_message or not assistant_message:
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "Both user message and assistant response are required"}
+            )
+        
+        # Store chat in the database
+        result = collection.update_one(
+            {"email": email},
+            {"$push": {"chat": {"user": user_message, "assistant": assistant_message}}},
+            upsert=True
+        )
+        
+        if result.matched_count == 0 and not result.upserted_id:
+            return JSONResponse(
+                status_code=500,
+                content={"detail": "Failed to save chat history"}
+            )
+        
+        return {"message": "Chat saved successfully"}
+        
+    except Exception as e:
+        print(f"Error in save_remi_chat: {str(e)}")
+        print(traceback.format_exc())
+        return JSONResponse(
+            status_code=500,
+            content={"detail": str(e)}
+        )
+
+@app.get("/summary-of-chats/")
+def get_summary_of_chats():
+    # Fetch chat history
+    chat_history = collection.find_one({"email": "sh33thal24@gmail.com"})["chat"]
+    
+    # Initialize counters
+    total_messages = len(chat_history)
+    total_words = sum(len(message["content"]) for message in chat_history)
+    
+    # Calculate average words per message
+    average_words_per_message = total_words / total_messages if total_messages > 0 else 0
+    
+    # Calculate total time spent in chat
+    start_time = datetime.strptime(chat_history[0]["date"], "%Y-%m-%d %H:%M:%S")
+    end_time = datetime.strptime(chat_history[-1]["date"], "%Y-%m-%d %H:%M:%S")
+    total_time_spent = end_time - start_time
+    
+    # Convert total time spent to minutes
+    total_minutes_spent = total_time_spent.total_seconds() / 60
+    
+    # Calculate average time spent per message
+    average_time_per_message = total_minutes_spent / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment score
+    total_sentiment_score = sum(int(entry["wellness"]["$numberInt"]) for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))
+    
+    # Calculate average sentiment score
+    average_sentiment_score = total_sentiment_score / total_messages if total_messages > 0 else 0
+    
+    # Calculate total wellness score
+    total_wellness_score = sum(int(entry["wellness"]) for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))
+    
+    # Calculate average wellness score
+    average_wellness_score = total_wellness_score / total_messages if total_messages > 0 else 0
+    
+    # Calculate total topic diversity
+    topic_diversity = len(set(message["content"] for message in chat_history))
+    
+    # Calculate average topic diversity
+    average_topic_diversity = topic_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total topic frequency
+    topic_frequency = {topic: sum(1 for message in chat_history if topic in message["content"].lower()) for topic in set(message["content"].lower() for message in chat_history)}
+    
+    # Calculate average topic frequency
+    average_topic_frequency = {topic: count / total_messages for topic, count in topic_frequency.items()}
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
+    average_sentiment_diversity = sentiment_diversity / total_messages if total_messages > 0 else 0
+    
+    # Calculate total sentiment frequency
+    sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
+    
+    # Calculate average sentiment frequency
+    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
+    
+    # Calculate total sentiment diversity
+    sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))
+    
+    # Calculate average sentiment diversity
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8000)

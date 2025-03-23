@@ -10,63 +10,104 @@ import Link from 'next/link';
 import Modalchat from "../components/modalchat";
 import dynamic from "next/dynamic";
 import LineChartComponent from "./linechart";
-
 import MedicineTracker from "./tracker";
 import UploadMedicalDocuments from "./upload";
+import TalkToRemi from "../components/TalkToRemi";
+import { FaRobot } from "react-icons/fa";
+import { HiHome, HiDocumentText, HiAcademicCap, HiCollection, HiChatAlt2, HiOutlineChatAlt } from "react-icons/hi";
 
+// Import PieChart dynamically to avoid SSR issues
 const PieChartComponent = dynamic(() => import("./piechart"), {
   ssr: false,
+  loading: () => <div className="h-64 w-full flex justify-center items-center">Loading Chart...</div>
 });
 
 export default function Home() {
-
   const [showModalchat, setShowModalchat] = useState(false);
+  const [showTalkToRemi, setShowTalkToRemi] = useState(false);
 
-    return (
-        <div className="drawer lg:drawer-open">
-          <input id="my-drawer-2" type="checkbox" className="drawer-toggle" />
-          <div className="drawer-content flex-flex-col m-6 bg-base-200 rounded-3xl ">
-            <div className="text-3xl mt-5 font-extrabold flex"><div className="pl-6 pr-4"><FaUserDoctor /></div>Diagnostics</div>
-            <div className="flex gap-9 w-full m-5 items-start h-72 mt-4">
-              <div className="bg-white rounded-2xl shadow-md ml-12">
-              <PieChartComponent/>
-              </div>
-              <div className="w-[600px]">
-              <LineChartComponent />
-              </div>
-            </div>
-            <div className="flex ">
-              <div className="mt-24 ml-12">
-              <UploadMedicalDocuments />
-              </div>
-              <div className="mt-1 ml-4">
-              </div>
-            </div>
-    </div> 
-    <div className="drawer-side rounded-t-3xl rounded-b-3xl sm:rounded-t-3xl sm:rounded-b-3xl shadow-2xl dark:shadow-2xl ">
-      <label htmlFor="my-drawer-2" aria-label="close sidebar" className="drawer-overlay"></label> 
-      <ul className="menu p-4 w-80 min-h-full bg-base-200 text-base-content round">
-        <div className="text-3xl font-extrabold m-5 flex">Explore<div className="ml-2 mt-1"><FaRegCompass /></div></div>
-        <div className="flex flex-col ">
-        <div className='items-center mb-8'>
-        <li className='p-2 '><Link href="/" className='text-lg flex justify-center font-bold'><div ><FaHome /></div>Home</Link></li>
-        <li className='p-2'><Link href="/people" className='text-lg flex justify-center font-bold'><div><MdEmojiPeople /></div>History</Link></li>
-        <li className='p-2'><Link href="/places" className='text-lg flex justify-center font-bold'><div><FaMapMarkedAlt /></div>Science</Link></li>
-         <li className='p-2'><Link href="/memories" className='text-lg flex justify-center font-semibold'><div><FaHandHoldingHeart /></div>English</Link></li>
-        <li className='p-2'><Link href="/personal" className='text-lg flex justify-center font-semibold'><div><FaUserDoctor /></div>Diagnostics</Link></li>
-        </div>
-        <div className="flex mt-48 justify-between">
-        <div className="ml-4"><button onClick={()=>setShowModalchat(true)} className="btn btn-primary" >Assistant</button></div>
-        <label className="flex cursor-pointer gap-2 mt-4">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>
-          <input type="checkbox" value="dark" className="toggle theme-controller"/>
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+  return (
+    <div className="drawer lg:drawer-open">
+      <input id="my-drawer-2" type="checkbox" className="drawer-toggle" />
+      <div className="drawer-content flex flex-col p-8">
+        <label htmlFor="my-drawer-2" className="btn btn-ghost drawer-button lg:hidden">
+          <HiOutlineChatAlt size={24} />
         </label>
+        <div className="mb-6">
+          <div className="text-3xl font-bold">Diagnostics</div>
         </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="card bg-base-100 shadow-xl">
+            <div className="card-body">
+              <h2 className="card-title">Health Summary</h2>
+              <PieChartComponent />
+            </div>
+          </div>
+
+          <div className="card bg-base-100 shadow-xl">
+            <div className="card-body">
+              <h2 className="card-title">Progress</h2>
+              <LineChartComponent />
+            </div>
+          </div>
         </div>
-      </ul>
+
+        <div className="mt-6">
+          <div className="card bg-base-100 shadow-xl">
+            <div className="card-body">
+              <h2 className="card-title">Medicine Tracker</h2>
+              <MedicineTracker />
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6">
+          <div className="card bg-base-100 shadow-xl">
+            <div className="card-body">
+              <h2 className="card-title">Upload Medical Documents</h2>
+              <UploadMedicalDocuments />
+            </div>
+          </div>
+        </div>
+        
+        <div className="fixed bottom-10 right-10 flex flex-col gap-4">
+          <button className="btn btn-circle btn-primary shadow-lg" onClick={() => setShowModalchat(true)}>
+            <HiChatAlt2 size={24} />
+          </button>
+          <button className="btn btn-circle btn-secondary shadow-lg" onClick={() => setShowTalkToRemi(true)}>
+            <FaRobot size={24} />
+          </button>
+        </div>
+
+        <Modalchat isVisible={showModalchat} onClose={() => setShowModalchat(false)} />
+        <TalkToRemi isVisible={showTalkToRemi} onClose={() => setShowTalkToRemi(false)} />
+      </div>
+
+      <div className="drawer-side">
+        <label htmlFor="my-drawer-2" className="drawer-overlay"></label>
+        <ul className="menu p-4 w-80 bg-base-200 text-base-content h-full">
+          <div className="flex flex-col gap-8 py-4">
+            <div className="flex justify-center">
+              <div className="avatar">
+                <div className="w-24 rounded-full">
+                  <img src="/profile.jpg" alt="Profile" />
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-col items-center space-y-1">
+              <h2 className="text-xl font-bold">John Doe</h2>
+              <p className="text-sm opacity-75">Premium User</p>
+            </div>
+          </div>
+          <li className="mb-2"><a className="flex items-center text-lg"><HiHome size={20} /> <span className="ml-2">Home</span></a></li>
+          <li className="mb-2"><a className="flex items-center text-lg"><HiAcademicCap size={20} /> <span className="ml-2">History</span></a></li>
+          <li className="mb-2"><a className="flex items-center text-lg"><HiAcademicCap size={20} /> <span className="ml-2">Science</span></a></li>
+          <li className="mb-2"><a className="flex items-center text-lg"><HiAcademicCap size={20} /> <span className="ml-2">English</span></a></li>
+          <li><a className="flex items-center text-lg"><HiDocumentText size={20} /> <span className="ml-2">Diagnostics</span></a></li>
+        </ul>
+      </div>
+      <input id="theme" type="checkbox" className="toggle theme-controller" value="synthwave" />
     </div>
-    <Modalchat isVisible={showModalchat} onClose ={()=>setShowModalchat(false)}/>
-  </div>
-    )
+  );
 }

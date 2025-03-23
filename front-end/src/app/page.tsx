@@ -5,6 +5,7 @@ import { MdEmojiPeople } from "react-icons/md";
 import { FaMapMarkedAlt } from "react-icons/fa";
 import { FaHandHoldingHeart } from "react-icons/fa";
 import { FaUserDoctor } from "react-icons/fa6";
+import { FaVideo } from "react-icons/fa";
 import { useState } from "react";
 import Link from 'next/link';
 import HomeContent from "./home";
@@ -31,6 +32,7 @@ export default function Home() {
         <li className='p-2'><Link href="/places" className='text-lg flex justify-center font-bold'><div><FaMapMarkedAlt /></div>Science</Link></li>
          <li className='p-2'><Link href="/memories" className='text-lg flex justify-center font-semibold'><div><FaHandHoldingHeart /></div>English</Link></li>
         <li className='p-2'><Link href="/personal" className='text-lg flex justify-center font-semibold'><div><FaUserDoctor /></div>Diagnostics</Link></li>
+        <li className='p-2'><Link href="/lecture" className='text-lg flex justify-center font-semibold'><div><FaVideo /></div>Realtime Lecture</Link></li>
         </div>
         <div className="flex mt-48 justify-between">
         <div className="ml-4"><button onClick={()=>setShowModalchat(true)} className="btn btn-primary" >Assistant</button></div>
