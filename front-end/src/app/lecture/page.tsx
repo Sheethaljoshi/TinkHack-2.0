@@ -35,6 +35,12 @@ export default function LecturePage() {
       )}
       
       <AILecturer />
+      
+      <div className="flex justify-center mt-8 mb-4">
+        <Link href="/" className="btn btn-primary">
+          Back to Home
+        </Link>
+      </div>
     </div>
   );
 } 

@@ -37,7 +37,7 @@ export default function Places() {
         <li className='p-2'><Link href="/personal" className='text-lg flex justify-center font-semibold'><div><FaUserDoctor /></div>Diagnostics</Link></li>
         <li className='p-2'><Link href="/lecture" className='text-lg flex justify-center font-semibold'><div><FaVideo /></div>Realtime Lecture</Link></li>
         </div>
-        <div className="flex mt-48 justify-between">
+        <div className="flex mt-36 justify-between">
         <div className="ml-4"><button onClick={()=>setShowModalchat(true)} className="btn btn-primary" >Assistant</button></div>
         <label className="flex cursor-pointer gap-2 mt-4">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>
