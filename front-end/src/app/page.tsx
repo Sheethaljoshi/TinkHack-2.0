@@ -10,6 +10,20 @@ import Link from 'next/link';
 import HomeContent from "./home";
 import Modalchat from "./components/modalchat";
 
+const links = [
+  {
+    name: "Story",
+    href: "/story",
+    description: "Generate stories based on your memories.",
+  },
+  {
+    name: "PDF Learning Tools",
+    href: "/learn_pdf",
+    description: "Upload PDFs and generate summaries, stories, and mnemonics.",
+  },
+  // ... other existing links ...
+];
+
 export default function Home() {
 
   const [showModalchat, setShowModalchat] = useState(false);
@@ -31,6 +45,7 @@ export default function Home() {
         <li className='p-2'><Link href="/places" className='text-lg flex justify-center font-bold'><div><FaMapMarkedAlt /></div>Science</Link></li>
          <li className='p-2'><Link href="/memories" className='text-lg flex justify-center font-semibold'><div><FaHandHoldingHeart /></div>English</Link></li>
         <li className='p-2'><Link href="/personal" className='text-lg flex justify-center font-semibold'><div><FaUserDoctor /></div>Diagnostics</Link></li>
+        <li className='p-2'><Link href="/learn_pdf" className='text-lg flex justify-center font-semibold'><div><FaRegCompass /></div>PDF Learning</Link></li>
         </div>
         <div className="flex mt-48 justify-between">
         <div className="ml-4"><button onClick={()=>setShowModalchat(true)} className="btn btn-primary" >Assistant</button></div>
