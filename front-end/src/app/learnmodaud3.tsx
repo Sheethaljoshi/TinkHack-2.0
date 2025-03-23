@@ -20,7 +20,7 @@ const StoryTellingComponent = () => {
       <h2 className="text-2xl font-bold mb-4">Story Telling Component</h2>
       <textarea
         className="textarea textarea-primary w-full h-full mb-4"
-        rows={10}
+        rows={4}
         value={transcript}
         readOnly
       />

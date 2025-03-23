@@ -16,12 +16,13 @@ const ContentPage: React.FC = () => {
                 <VoiceAssistant2/>
                 </div>
                 <div>
-                <VoiceAssistant5/>
+                <VoiceAssistant4/>
+                
                 </div>
             </div>
             <div className='flex flex-col gap-5 w-1/2 h-full'>
                 <div>
-                <VoiceAssistant4/>
+                <VoiceAssistant5/>
                 </div>
             </div>
            

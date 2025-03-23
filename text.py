@@ -3,6 +3,9 @@ from datetime import datetime, timedelta
 import os
 import random
 import tempfile
+import traceback
+from fastapi.staticfiles import StaticFiles
+from groq import Groq
 import uuid
 import PyPDF2
 from fastapi import FastAPI, HTTPException, File, Query, UploadFile, Form
@@ -307,8 +310,48 @@ async def delete_person(email: str, first_name: str, last_name: str, person_inde
             return {"message": "Person data deleted successfully"}
     raise HTTPException(status_code=404, detail="Person not found")
 
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
+@app.post("/generate-mnemonic/")
+async def generate_mnemonic(input_text: str = Form(...)):
+    try:
+        # Step 2: Generate Mnemonic Phrase
+        client = Groq()
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {"role": "system", "content": "Generate a mnemonic device to remember the given phrase."},
+                {"role": "user", "content": input_text}
+            ]
+        )
+        mnemonic_text = response.choices[0].message.content
 
+        # Step 3: Convert Mnemonic to Speech (TTS)
+        openai_client = OpenAI()
+        tts_response = openai_client.audio.speech.create(
+            model="gpt-4o-mini-tts",
+            input=mnemonic_text,
+            voice="alloy",
+            instructions="Explain in a caring engaging way like a teacher."
+        )
+
+        # Step 4: Save Audio File in Static Directory
+        static_audio_dir = os.path.join("static", "audio")
+        os.makedirs(static_audio_dir, exist_ok=True)
+        audio_filename = f"{next(tempfile._get_candidate_names())}.mp3"
+        audio_filepath = os.path.join(static_audio_dir, audio_filename)
+        with open(audio_filepath, "wb") as audio_file:
+            audio_file.write(tts_response.read())
+
+        # Step 5: Construct the Audio URL
+        audio_url = f"/static/audio/{audio_filename}"
+
+        return JSONResponse(content={"mnemonic": mnemonic_text, "audio_url": audio_url})
+
+    except Exception as e:
+        print("ERROR:", str(e))
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/get/person")
 async def get_person(email: str, first_name: str, last_name: str):
@@ -316,7 +359,6 @@ async def get_person(email: str, first_name: str, last_name: str):
         {"email": email, "first_name": first_name, "last_name": last_name},
         {"people_data": 1, "_id": 0}
     )
-    print(query_result)
     if query_result:
         return query_result.get("people_data", [])
     else:
