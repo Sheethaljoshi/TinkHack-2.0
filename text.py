@@ -578,7 +578,7 @@ async def clear_chat():
 async def generate_story_from_pdf():
     try:
         # Read PDF from repository
-        pdf_path = "people.pdf"  # Using people.pdf from root directory
+        pdf_path = "Quit India Movement.pdf"  # Using Quit India Movement.pdf from root directory
         
         # Extract text from PDF
         pdf_text = extract_text_from_pdf(pdf_path)
@@ -632,7 +632,7 @@ async def generate_story_from_pdf():
 async def generate_flashcards():
     try:
         # Read PDF from repository
-        pdf_path = "people.pdf"
+        pdf_path = "Quit India Movement.pdf"
         
         # Extract text from PDF
         pdf_text = extract_text_from_pdf(pdf_path)
