@@ -20,7 +20,7 @@ const Card: React.FC<CardProps> = ({ name, relation, description, occupation, pe
     <Fragment>
     <div className="card lg:card-side bg-base-100 shadow-xl">
       <figure className="h-64 lg:h-full">
-       <img src="https://img.daisyui.com/images/stock/photo-1494232410401-ad00d5433cfa.jpg" className='object-cover w-full h-full' />
+      <img src={image_url} className='object-cover w-full h-full' />
       </figure>
       <div className="card-body">
         <div>

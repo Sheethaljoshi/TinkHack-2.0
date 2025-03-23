@@ -13,19 +13,9 @@ const DifficultySelector = () => {
     audio.play();
   };
 
-  const handleDownload = () => {
-    const noteContent = `Difficulty selected: ${difficulty}`;
-    const blob = new Blob([noteContent], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'notes.txt';
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
   return (
-    <div className="flex flex-col items-center p-4 bg-white shadow-lg rounded-lg">
+    <div className="flex flex-col items-center p-4 bg-white shadow-lg rounded-lg w-96 ml-44">
+       
       <h2 className="text-2xl font-bold mb-4">Select Difficulty</h2>
       <input
         type="range"
@@ -45,20 +35,12 @@ const DifficultySelector = () => {
           Generate
         </button>
       ) : (
-        <>
-          <button
-            onClick={handlePlayAudio}
-            className="btn btn-success mt-4"
-          >
-            Play
-          </button>
-          <button
-            onClick={handleDownload}
-            className="btn btn-secondary mt-4"
-          >
-            Download Notes
-          </button>
-        </>
+        <button
+          onClick={handlePlayAudio}
+          className="btn btn-success mt-4"
+        >
+          Play
+        </button>
       )}
     </div>
   );

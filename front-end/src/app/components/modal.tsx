@@ -13,17 +13,12 @@ const Modal: React.FC<ModalProps> = ({ isVisible, onClose }) => {
   const [personName, setPersonName] = useState('');
   const [therelation, setRelation] = useState('');
   const [theoccupation, setOccupation] = useState('');
-  const [personDescription, setPersonDescription] = useState('');
-  const [placeName, setPlaceName] = useState('');
-  const [placeDescription, setPlaceDescription] = useState('');
-  const [thedate, setDate] = useState('');
-  const [memoryDescription, setMemoryDescription] = useState('');
-  const [image, setImage] = useState<File | null>(null);
-
-  const handleImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  
+  const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setImage(file); // Store the file object
+      setPdfFile(file); 
     }
   };
 
@@ -34,28 +29,14 @@ const Modal: React.FC<ModalProps> = ({ isVisible, onClose }) => {
     formData.append('first_name', 'Sheethal');
     formData.append('last_name', 'Joshi Thomas');
 
-    if (image) {
-      formData.append('image', image); // Add the image file to formData
-    }
-
     if (activeTab === 1) {
-      url = `http://127.0.0.1:8000/insert/person`;
+      url = `http://127.0.0.1:8000/insert/person_with_pdf/`;
       formData.append('name', personName);
       formData.append('relation', therelation);
-      formData.append('occupation', "");
-      formData.append('description', "");
-    } else if (activeTab === 2) {
-      url = `http://127.0.0.1:8000/insert/person`;
-      formData.append('name', personName);
-      formData.append('relation', therelation);
-      formData.append('occupation', "");
-      formData.append('description', "");
-    } else if (activeTab === 3) {
-      url = `http://127.0.0.1:8000/insert/person`;
-      formData.append('name', personName);
-      formData.append('relation', therelation);
-      formData.append('occupation', "");
-      formData.append('description', "");
+      formData.append('occupation', theoccupation);
+      if (pdfFile) {
+        formData.append('pdf_file', pdfFile);
+      }
     }
 
     const response = await axios.post(url, formData, {
@@ -93,83 +74,33 @@ const Modal: React.FC<ModalProps> = ({ isVisible, onClose }) => {
               name="my_tabs_2"
               role="tab"
               className="tab"
-              aria-label="History"
+              aria-label="Physics"
               checked={activeTab === 1}
               onChange={() => handleTabChange(1)}
             />
             <div role="tabpanel" className={`tab-content bg-base-100 border-base-300 rounded-box p-6 ${activeTab === 1 ? '' : 'hidden'}`}>
               <div className="mb-4">
                 <label className="input input-bordered flex items-center gap-2">
-                  Lesson
-                  <input type="text" className="grow" placeholder="Daisy" value={personName} onChange={(e) => setPersonName(e.target.value)} />
+                  Module
+                  <input type="text" className="grow" value={personName} onChange={(e) => setPersonName(e.target.value)} />
                 </label>
               </div>
               <div className="mb-4">
                 <label className="input input-bordered flex items-center gap-2">
                   Date
-                  <input type="date" className="grow" placeholder="Friend" value={therelation} onChange={(e) => setRelation(e.target.value)} />
+                  <input type="date" className="grow" value={therelation} onChange={(e) => setRelation(e.target.value)} />
+                </label>
+              </div>
+              <div className="mb-4">
+                <label className="input input-bordered flex items-center gap-2">
+                  Current Proficiency
+                  <input type="text" className="grow" value={theoccupation} onChange={(e) => setOccupation(e.target.value)} />
                 </label>
               </div>
               <div className="mb-4">
                 <label className="flex flex-col gap-2">
-                  <input type="file" className="file-input file-input-primary file-input-bordered w-full max-w-xs" accept="image/*" onChange={handleImageUpload} />
-                </label>
-              </div>
-            </div>
-            <input
-              type="radio"
-              name="my_tabs_2"
-              role="tab"
-              className="tab"
-              aria-label="Science"
-              checked={activeTab === 2}
-              onChange={() => handleTabChange(2)}
-            />
-                       <div role="tabpanel" className={`tab-content bg-base-100 border-base-300 rounded-box p-6 ${activeTab === 1 ? '' : 'hidden'}`}>
-              <div className="mb-4">
-                <label className="input input-bordered flex items-center gap-2">
-                  Lesson
-                  <input type="text" className="grow" placeholder="Daisy" value={personName} onChange={(e) => setPersonName(e.target.value)} />
-                </label>
-              </div>
-              <div className="mb-4">
-                <label className="input input-bordered flex items-center gap-2">
-                  Date
-                  <input type="date" className="grow" placeholder="Friend" value={therelation} onChange={(e) => setRelation(e.target.value)} />
-                </label>
-              </div>
-              <div className="mb-4">
-                <label className="flex flex-col gap-2">
-                  <input type="file" className="file-input file-input-primary file-input-bordered w-full max-w-xs" accept="image/*" onChange={handleImageUpload} />
-                </label>
-              </div>
-            </div>
-
-            <input
-              type="radio"
-              name="my_tabs_2"
-              role="tab"
-              className="tab"
-              aria-label="English"
-              checked={activeTab === 3}
-              onChange={() => handleTabChange(3)}
-            />
-            <div role="tabpanel" className={`tab-content bg-base-100 border-base-300 rounded-box p-6 ${activeTab === 1 ? '' : 'hidden'}`}>
-              <div className="mb-4">
-                <label className="input input-bordered flex items-center gap-2">
-                  Lesson
-                  <input type="text" className="grow" placeholder="Daisy" value={personName} onChange={(e) => setPersonName(e.target.value)} />
-                </label>
-              </div>
-              <div className="mb-4">
-                <label className="input input-bordered flex items-center gap-2">
-                  Date
-                  <input type="date" className="grow" placeholder="Friend" value={therelation} onChange={(e) => setRelation(e.target.value)} />
-                </label>
-              </div>
-              <div className="mb-4">
-                <label className="flex flex-col gap-2">
-                  <input type="file" className="file-input file-input-primary file-input-bordered w-full max-w-xs" accept="image/*" onChange={handleImageUpload} />
+                  Upload Study Material
+                  <input type="file" className="file-input file-input-primary file-input-bordered w-full max-w-xs" accept="application/pdf" onChange={handleFileUpload} />
                 </label>
               </div>
             </div>

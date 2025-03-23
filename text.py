@@ -2,7 +2,9 @@ from collections import Counter
 from datetime import datetime, timedelta
 import os
 import random
+import tempfile
 import uuid
+import PyPDF2
 from fastapi import FastAPI, HTTPException, File, Query, UploadFile, Form
 from pymongo import MongoClient
 from openai import OpenAI
@@ -41,118 +43,7 @@ MODEL = "gpt-4o-mini"
 
 USER_EMAIL = "sh33thal24@gmail.com"
 
-from pymongo import MongoClient
 
-def insert_reminder(user_email: str, reminder_id: int, text: str, completed: bool):
-    user_data = collection.find_one({"email": user_email})
-    
-    if user_data:
-        # Add reminders field if not present
-        if "reminders" not in user_data:
-            user_data["reminders"] = []
-        
-        # Create reminder object
-        reminder = {"id": reminder_id, "text": text, "completed": completed}
-        
-        # Append new reminder
-        user_data["reminders"].append(reminder)
-        
-        # Update the document
-        collection.update_one({"email": user_email}, {"$set": {"reminders": user_data["reminders"]}})
-        return {"message": "Reminder added successfully."}
-    else:
-        raise HTTPException(status_code=404, detail="User not found.")
-
-@app.post("/add_reminder")
-def add_reminder(
-    email: str,
-    reminder_id: int = Query(..., alias="id"),
-    text: str = Query(...),
-    completed: bool = Query(...)
-):
-    response = insert_reminder(email, reminder_id, text, completed)
-    return response
-
-
-@app.get("/memories/")
-async def get_memories():
-    user_data = collection.find_one({"email": USER_EMAIL}, {"_id": 0, "mem_data": 1})  # Fetch only mem_data
-    if not user_data or "mem_data" not in user_data:
-        raise HTTPException(status_code=404, detail="No memories found")
-    return user_data["mem_data"]
-
-@app.get("/generate_story")
-async def generate_story():
-    print("🔹 Received request to generate story")
-    client = OpenAI()
-    user_data = collection.find_one({"email": USER_EMAIL}, {"_id": 0, "mem_data": 1})
-    print(f"🔹 User data found: {user_data}") 
-    if not user_data or "mem_data" not in user_data:
-        print("❌ No memories found")
-        raise HTTPException(status_code=404, detail="No memories found")
-
-    memories = user_data["mem_data"]
-    if not memories:
-        print("❌ Memory list is empty")
-        raise HTTPException(status_code=404, detail="No memories found")
-
-    
-    selected_memory = random.choice(memories)
-    print(f"🔹 Selected memory: {selected_memory}")
-    
-    story_prompt = f"Turn this memory into a short, warm, and nostalgic recap for a dementia patient:\n\nDate: {selected_memory['date']}\nMemory: {selected_memory['description']}"
-    
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": "Gently remind the user of this past moment in a warm and reassuring tone. Keep it simple, clear, and nostalgic."},
-                {"role": "user", "content": story_prompt}
-            ]
-        )
-        story = response.choices[0].message.content
-        print(f"✅ Story generated: {story}")
-
-        audio_filename = f"story_{uuid.uuid4()}.mp3"
-        print("🔹 Generating audio...")
-        audio_response = client.audio.speech.create(
-            model="gpt-4o-mini-tts",
-            voice="alloy",
-            input=story,
-            instructions="Whisper the response in a small, light tone."
-        )
-
-        with open(audio_filename, "wb") as audio_file:
-            audio_file.write(audio_response.content)
-        print(f"✅ Audio saved: {audio_filename}")
-
-        dalle_response = client.images.generate(
-            prompt=f"A heartwarming image representing this memory: {selected_memory['description']}",
-            model="dall-e-3",
-            n=1,
-            size="1024x1024"
-        )
-        image_url = dalle_response.data[0].url
-        
-        print(f"✅ Image generated: {image_url}")
-
-        return {
-            "title": "Remember When...",
-            "story": story,
-             "audio_url": f"http://127.0.0.1:8000/get_audio/{audio_filename}",
-            "image_url": image_url
-        }
-        
-    except Exception as e:
-        print(f"❌ Error occurred: {str(e)}")  # Log the exact error
-        raise HTTPException(status_code=500, detail=str(e))
-    
-@app.get("/get_audio/{filename}")
-async def get_audio(filename: str):
-    file_path = f"./{filename}"  # Ensure correct path
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="Audio file not found")
-    return FileResponse(file_path, media_type="audio/mpeg")
 
 class ToggleRequest(BaseModel):
     email: str
@@ -314,112 +205,88 @@ def export_and_upload_to_vector_store():
 
     return vector_store_file
 
-@app.post("/insert/place")
-async def insert_place(
-    email: str = Form(...),
-    first_name: str = Form(...),
-    last_name: str = Form(...),
-    place_name: str = Form(...),
-    place_description: str = Form(...),
-    image: UploadFile = File(None)
-):
-    image_bytes = await image.read()
-    image_base64 = base64.b64encode(image_bytes).decode('utf-8')
-    url = "https://api.imgbb.com/1/upload"
-    payload = {
-        "key": os.environ.get("IMGBB_API_KEY"),
-        "image": image_base64
-    }
-    response = requests.post(url, payload)
-    result = json.loads(response.text)
-    print(result)
-    url = result["data"]["url"]
-    print(url)
+def extract_text_from_pdf(pdf_path):
+    text = ""
+    with open(pdf_path, "rb") as file:
+        reader = PyPDF2.PdfReader(file)
+        for page in reader.pages:
+            extracted = page.extract_text()
+            if extracted:
+                text += extracted + "\n"
+    return text
+
+# Function to generate key topics and an image
+def generate_key_topics_and_image(pdf_text):
+    client = OpenAI()
     
-    place_data = {
-        'place_name': place_name,
-        'image_url': url,
-        'description': place_description,
-    }
-
-    update_result = collection.update_one(
-        {'email': email, 'first_name': first_name, 'last_name': last_name},
-        {'$push': {'places_mem': place_data}}
+    # Generate key topics using GPT-4o
+    completion = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant that extracts key learning points from text."},
+            {"role": "user", "content": f"Analyze the following text and extract the key topics to be learned from it.\n\n"
+                                             "Present them in a numbered list with each point in the following format:\n\n"
+                                             "[Topic Name]: A concise description (max 10 words) of its relevance or importance.\n\n"
+                                             "Ensure the topics cover all major aspects of the text and are arranged logically.\n\n"
+                                             f"Text:\n{pdf_text}"}
+        ]
     )
-    export_and_upload_to_vector_store()
-    if update_result.modified_count == 0:
-        raise HTTPException(status_code=404, detail="User not found")
+    key_topics = completion.choices[0].message.content
+    
+    # Generate an image using DALL·E 3
+    image_response = client.images.generate(
+        model="dall-e-3",
+        prompt=f"An artistic representation of the main themes in the following text: {pdf_text[:1000]}",
+        n=1,
+        size="1024x1024"
+    )
+    
+    image_url = image_response.data[0].url
+    
+    return key_topics, image_url
 
-    return {"status": "Place data inserted successfully"}
-
-@app.post("/insert/person")
-async def insert_person(
+@app.post("/insert/person_with_pdf/")
+async def insert_person_with_pdf(
     email: str = Form(...),
     first_name: str = Form(...),
     last_name: str = Form(...),
     name: str = Form(...),
     relation: str = Form(...),
     occupation: str = Form(...),
-    description: str = Form(...),
-    image: UploadFile = File(None)
+    pdf_file: UploadFile = File(...),
 ):
-    image_url = None
-    if image:
-        image_bytes = await image.read()
-        image_base64 = base64.b64encode(image_bytes).decode('utf-8')
-        url = "https://api.imgbb.com/1/upload"
-        payload = {
-            "key": os.environ.get("IMGBB_API_KEY"),
-            "image": image_base64
+    try:
+        # Save uploaded PDF temporarily
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_pdf:
+            temp_pdf.write(pdf_file.file.read())
+            temp_pdf_path = temp_pdf.name
+        
+        # Extract text from PDF
+        pdf_text = extract_text_from_pdf(temp_pdf_path)
+        
+        # Generate topics and image
+        description, image_url = generate_key_topics_and_image(pdf_text)
+        
+        # Store data in MongoDB
+        person_data = {
+            'name': name,
+            'relation': relation,
+            'occupation': occupation,
+            'description': description,
+            'image_url': image_url,
         }
-        response = requests.post(url, payload)
-        result = json.loads(response.text)
-        print(result)
-        image_url = result["data"]["url"]
-        print(image_url)
-    
-    person_data = {
-        'name': name,
-        'relation': relation,
-        'occupation': occupation,
-        'description': description,
-        'image_url': image_url,
-    }
 
-    result = collection.update_one(
-        {'email': email, 'first_name': first_name, 'last_name': last_name},
-        {'$push': {'people_data': person_data}}
-    )
+        result = collection.update_one(
+            {'email': email, 'first_name': first_name, 'last_name': last_name},
+            {'$push': {'people_data': person_data}}
+        )
 
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="User not found")
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="User not found")
 
-    export_and_upload_to_vector_store()
-    return {"status": "Person data inserted successfully"}
-
-@app.post("/insert/memory")
-async def insert_memory(
-    email: str = Form(...),
-    first_name: str = Form(...),
-    last_name: str = Form(...),
-    date: str = Form(...),
-    description: str = Form(...)
-):
-    memory_data = {
-        'date': date,
-        'description': description
-    }
-
-    result = collection.update_one(
-        {'email': email, 'first_name': first_name, 'last_name': last_name},
-        {'$push': {'mem_data': memory_data}}
-    )
-
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    export_and_upload_to_vector_store()
-    return {"status": "Memory data inserted successfully"}
+        return {"status": "Person data inserted successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/delete/person")
@@ -440,52 +307,8 @@ async def delete_person(email: str, first_name: str, last_name: str, person_inde
             return {"message": "Person data deleted successfully"}
     raise HTTPException(status_code=404, detail="Person not found")
 
-@app.post("/delete/place")
-async def delete_place(email: str, first_name: str, last_name: str, place_index: int):
-    query_result = collection.find_one(
-        {"email": email, "first_name": first_name, "last_name": last_name},
-        {"places_mem": 1, "_id": 0}
-    )
-    if query_result:
-        place_data = query_result.get("places_mem", [])
-        if place_index < len(place_data):
-            place_to_delete = place_data[place_index]
-            collection.update_one(
-                {"email": email, "first_name": first_name, "last_name": last_name},
-                {"$pull": {"places_mem": place_to_delete}}
-            )
-            export_and_upload_to_vector_store()
-            return {"message": "Place data deleted successfully"}
-    raise HTTPException(status_code=404, detail="Place not found")
 
-@app.post("/delete/mem")
-async def delete_mem_data(email: str, first_name: str, last_name: str, mem_index: int):
-    query_result = collection.find_one(
-        {"email": email, "first_name": first_name, "last_name": last_name},
-        {"mem_data": 1, "_id": 0}
-    )
-    if query_result:
-        mem_data = query_result.get("mem_data", [])
-        if mem_index < len(mem_data):
-            mem_to_delete = mem_data[mem_index]
-            collection.update_one(
-                {"email": email, "first_name": first_name, "last_name": last_name},
-                {"$pull": {"mem_data": mem_to_delete}}
-            )
-            export_and_upload_to_vector_store()
-            return {"message": "Memory data deleted successfully"}
-    raise HTTPException(status_code=404, detail="Memory data not found")
 
-@app.get("/get/mem")
-async def get_mem(email: str, first_name: str, last_name: str):
-    query_result = collection.find_one(
-        {"email": email, "first_name": first_name, "last_name": last_name},
-        {"mem_data": 1, "_id": 0}
-    )
-    if query_result:
-        return query_result.get("mem_data", [])
-    else:
-        return []
 
 @app.get("/get/person")
 async def get_person(email: str, first_name: str, last_name: str):
@@ -493,130 +316,17 @@ async def get_person(email: str, first_name: str, last_name: str):
         {"email": email, "first_name": first_name, "last_name": last_name},
         {"people_data": 1, "_id": 0}
     )
+    print(query_result)
     if query_result:
         return query_result.get("people_data", [])
     else:
         return []
-
-@app.get("/get/place")
-async def get_place(email: str, first_name: str, last_name: str):
-    query_result = collection.find_one(
-        {"email": email, "first_name": first_name, "last_name": last_name},
-        {"places_mem": 1, "_id": 0}
-    )
-    if query_result:
-        return query_result.get("places_mem", [])
-    else:
-        return []
     
     
 
-@app.post("/update/person")
-async def update_person(
-    email: str = Form(...),
-    first_name: str = Form(...),
-    last_name: str = Form(...),
-    name: str = Form(...),
-    relation: str = Form(...),
-    occupation: str = Form(...),
-    description: str = Form(...),
-    person_index: str = Form(...),
-    image: UploadFile = File(None)
-):  
-    
-    if image:
-        image_bytes = await image.read()
-        if image_bytes:
-            image_base64 = base64.b64encode(image_bytes).decode('utf-8')
-            url = "https://api.imgbb.com/1/upload"
-            payload = {
-                "key": os.environ.get("IMGBB_API_KEY"),
-                "image": image_base64
-            }
-            response = requests.post(url, payload)
-            result = json.loads(response.text)
-            url = result["data"]["url"]
-        else:
-            url = None
-    else:
-        url = None
-        
-    query_result = collection.find_one(
-        {"email": email, "first_name": first_name, "last_name": last_name},
-        {"people_data": 1, "_id": 0}
-    )
-    
-    if query_result:
-        people_data = query_result.get("people_data", [])
-        person_index = int(person_index)
-        if person_index < len(people_data):
-            existing_place = people_data[person_index]
-            people_data[person_index] = {
-                "name": name,
-                "relation": relation,
-                "occupation": occupation,
-                "description": description,
-                "image_url": url if url else existing_place.get("image_url"),
-            }
-            collection.update_one(
-                {"email": email, "first_name": first_name, "last_name": last_name},
-                {"$set": {"people_data": people_data}}
-            )
-            export_and_upload_to_vector_store()
-            return {"message": "Person data updated successfully"}
-    raise HTTPException(status_code=404, detail="Person not found")
 
 
-@app.post("/update/place")
-async def update_person(
-    email: str = Form(...),
-    first_name: str = Form(...),
-    last_name: str = Form(...),
-    place_name: str = Form(...),
-    description: str = Form(...),
-    place_index: str = Form(...),  # Received as a string
-    image: UploadFile = File(None)
-):  
-    if image:
-        image_bytes = await image.read()
-        if image_bytes:
-            image_base64 = base64.b64encode(image_bytes).decode('utf-8')
-            url = "https://api.imgbb.com/1/upload"
-            payload = {
-                "key": os.environ.get("IMGBB_API_KEY"),
-                "image": image_base64
-            }
-            response = requests.post(url, payload)
-            result = json.loads(response.text)
-            url = result["data"]["url"]
-        else:
-            url = None
-    else:
-        url = None
-    
-    query_result = collection.find_one(
-        {"email": email, "first_name": first_name, "last_name": last_name},
-        {"places_mem": 1, "_id": 0}
-    )
-    if query_result:
-        places_mem = query_result.get("places_mem", [])
-        place_index = int(place_index)  # Convert to integer
-        
-        if place_index < len(places_mem):
-            existing_place = places_mem[place_index]
-            places_mem[place_index] = {
-                "place_name": place_name,
-                "image_url": url if url else existing_place.get("image_url"),
-                "description": description
-            }
-            collection.update_one(
-                {"email": email, "first_name": first_name, "last_name": last_name},
-                {"$set": {"places_mem": places_mem}}
-            )
-            export_and_upload_to_vector_store()
-            return {"message": "Place data updated successfully"}
-    
-    raise HTTPException(status_code=404, detail="Place not found")
+
 
 @app.get("/total_wellness")
 def get_total_wellness():
@@ -652,27 +362,6 @@ def get_total_wellness():
     
     return response
 
-
-@app.post("/update/mem")
-async def update_person(email: str, first_name: str, last_name: str, mem_index: int, date: str, description: str):
-    query_result = collection.find_one(
-        {"email": email, "first_name": first_name, "last_name": last_name},
-        {"mem_data": 1, "_id": 0}
-    )
-    if query_result:
-        places_mem= query_result.get("mem_data", [])
-        if mem_index < len(places_mem):
-            places_mem[mem_index] = {
-                "date": date,
-                "description": description
-            }
-            collection.update_one(
-                {"email": email, "first_name": first_name, "last_name": last_name},
-                {"$set": {"mem_data": places_mem}}
-            )
-            export_and_upload_to_vector_store()
-            return {"message": "Place data updated successfully"}
-    raise HTTPException(status_code=404, detail="Place not found")
 
 @app.post("/get_answer/")
 async def get_answer( question: str):

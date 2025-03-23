@@ -2,6 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import VoiceAssistant from '../voice';
 import VoiceAssistant2 from '../learnmodaud';
+import VoiceAssistant3 from '../learnmodaud1';
+import VoiceAssistant4 from '../learnmodaud3';
+import VoiceAssistant5 from '../learnmodaud1';
 
 
 const ContentPage: React.FC = () => {
@@ -13,15 +16,15 @@ const ContentPage: React.FC = () => {
                 <VoiceAssistant2/>
                 </div>
                 <div>
-                <VoiceAssistant2/>
+                <VoiceAssistant5/>
                 </div>
             </div>
             <div className='flex flex-col gap-5 w-1/2'>
                 <div>
-                <VoiceAssistant2/>
+                <VoiceAssistant4/>
                 </div>
                 <div>
-                <VoiceAssistant2/>
+                <VoiceAssistant3/>
                 </div>
             </div>
            
