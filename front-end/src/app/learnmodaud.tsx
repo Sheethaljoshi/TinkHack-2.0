@@ -26,7 +26,7 @@ const DifficultySelector = () => {
 
   return (
     <div className="flex flex-col items-center p-4 bg-white shadow-lg rounded-lg">
-      <h2 className="text-2xl font-bold mb-4">Select Difficulty</h2>
+      <h2 className="text-2xl font-bold mb-4">Select level of explanation</h2>
       <input
         type="range"
         min="1"
@@ -45,20 +45,20 @@ const DifficultySelector = () => {
           Generate
         </button>
       ) : (
-        <>
+        <div className="flex flex-row gap-2 mt-4">
           <button
             onClick={handlePlayAudio}
-            className="btn btn-success mt-4"
+            className="btn btn-success"
           >
             Play
           </button>
           <button
             onClick={handleDownload}
-            className="btn btn-secondary mt-4"
+            className="btn btn-secondary"
           >
             Download Notes
           </button>
-        </>
+        </div>
       )}
     </div>
   );

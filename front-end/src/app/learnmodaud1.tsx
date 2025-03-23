@@ -1,53 +1,67 @@
-"use client";
-import { useState, useEffect, useRef } from "react";
-import { BsChatLeftHeart } from "react-icons/bs";
-import { IconContext } from "react-icons";
-import DifficultySelector from "./components/summary";
+import { useState } from 'react';
 
-const VoiceAssistant5: React.FC = () => {
-  const [isMounted, setIsMounted] = useState(false);
-  const modalRef = useRef<HTMLDialogElement | null>(null);
+const DifficultySelector = () => {
+  const [difficulty, setDifficulty] = useState(1);
+  const [generated, setGenerated] = useState(false);
 
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
+  const handleGenerate = () => {
+    setGenerated(true);
+  };
 
-  if (!isMounted) return null; // Avoid hydration errors
+  const handlePlayAudio = () => {
+    const audio = new Audio('/success_sound.mp3');
+    audio.play();
+  };
+
+  const handleDownload = () => {
+    const noteContent = `Difficulty selected: ${difficulty}`;
+    const blob = new Blob([noteContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'notes.txt';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
-    <div className="max-w-3xl  mx-auto p-14 bg-base-100 shadow-xl rounded-2xl">
-      <div className="text-2xl font-extrabold text-[#343232] mb-4 text-center">
-        Having a bad day?
-      </div>
-
-      <div className="flex justify-center">
-        <button 
-          className="btn btn-lg btn-primary px-6 py-3 text-xl flex items-center gap-3" 
-          onClick={() => modalRef.current?.showModal()}
+    <div className="flex flex-col items-center p-4 bg-white shadow-lg rounded-lg">
+      <h2 className="text-2xl font-bold mb-4">Select level of explanation</h2>
+      <input
+        type="range"
+        min="1"
+        max="3"
+        step="1"
+        value={difficulty}
+        onChange={(e) => setDifficulty(Number(e.target.value))}
+        className="range range-primary mb-4"
+      />
+      <span className="text-lg font-semibold">Difficulty: {difficulty}</span>
+      {!generated ? (
+        <button
+          onClick={handleGenerate}
+          className="btn btn-primary mt-4"
         >
-          Talk to Remi 
-          <IconContext.Provider value={{ color: "black", className: "global-class-name", size:"1.8em" }}>
-            <div>
-              <BsChatLeftHeart />
-            </div>
-          </IconContext.Provider>
+          Generate
         </button>
-      </div>
-
-      {/* Larger Modal */}
-      <dialog ref={modalRef} id="my_modal_4" className="modal">
-        <div className="modal-box w-full max-w-3xl p-8">
-        <h2 className="text-4xl font-bold mb-8 p-3">Explain Module: </h2>
-          <DifficultySelector/>
-          <div className="modal-action">
-            <form method="dialog">
-              <button className="btn btn-lg">Close</button>
-            </form>
-          </div>
+      ) : (
+        <div className="flex flex-row gap-2 mt-4">
+          <button
+            onClick={handlePlayAudio}
+            className="btn btn-success"
+          >
+            Play
+          </button>
+          <button
+            onClick={handleDownload}
+            className="btn btn-secondary"
+          >
+            Download Notes
+          </button>
         </div>
-      </dialog>
+      )}
     </div>
   );
 };
 
-export default VoiceAssistant5;
+export default DifficultySelector;
