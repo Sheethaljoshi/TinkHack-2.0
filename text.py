@@ -574,7 +574,126 @@ async def clear_chat():
     
     return {"message": "Chat history cleared successfully"}
 
+@app.post("/generate-story-from-pdf/")
+async def generate_story_from_pdf():
+    try:
+        # Read PDF from repository
+        pdf_path = "people.pdf"  # Using people.pdf from root directory
+        
+        # Extract text from PDF
+        pdf_text = extract_text_from_pdf(pdf_path)
+        
+        # Initialize clients
+        groq_client = Groq()
+        openai_client = OpenAI()
+        
+        # Generate story parts using Groq
+        story_parts = []
+        for i in range(5):
+            part_prompt = f"""Based on the following text, create part {i+1} of a concise story that explains the content in an engaging way. 
+            Keep the explanation brief and focused (2-3 sentences maximum).
+            Make it educational and easy to understand.
+            Focus on a specific aspect of the content for this part.
+            
+            Text: {pdf_text}
+            
+            Generate a brief explanation for part {i+1} that can be illustrated with an image."""
+            
+            response = groq_client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[
+                    {"role": "system", "content": "You are an expert storyteller who creates concise, engaging educational content."},
+                    {"role": "user", "content": part_prompt}
+                ]
+            )
+            
+            story_text = response.choices[0].message.content
+            
+            # Generate image for this part using OpenAI
+            image_response = openai_client.images.generate(
+                model="dall-e-3",
+                prompt=f"Create an educational illustration for: {story_text[:200]}",
+                n=1,
+                size="1024x1024"
+            )
+            
+            story_parts.append({
+                "text": story_text,
+                "image": image_response.data[0].url
+            })
+        
+        return {"story_parts": story_parts}
+        
+    except Exception as e:
+        print(f"Error: {str(e)}")  # Add error logging
+        raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/generate-flashcards/")
+async def generate_flashcards():
+    try:
+        # Read PDF from repository
+        pdf_path = "people.pdf"
+        
+        # Extract text from PDF
+        pdf_text = extract_text_from_pdf(pdf_path)
+        
+        # Initialize Groq client
+        groq_client = Groq()
+        
+        # Generate flashcards using Groq
+        flashcard_prompt = f"""Based on the following text, create a set of 10 flashcards for learning and testing.
+        Each flashcard should have:
+        1. A question that tests understanding
+        2. The correct answer
+        3. A difficulty level (1-3)
+        4. A hint (optional)
+        
+        Format the response as a JSON array with this structure:
+        [
+            {{
+                "id": "string",
+                "question": "string",
+                "answer": "string",
+                "difficulty": number,
+                "hint": "string"
+            }}
+        ]
+        
+        Make the questions varied and challenging, covering different aspects of the content.
+        Text: {pdf_text}"""
+        
+        response = groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {"role": "system", "content": "You are an expert at creating educational flashcards and quiz questions."},
+                {"role": "user", "content": flashcard_prompt}
+            ]
+        )
+        
+        # Get the response content
+        content = response.choices[0].message.content.strip()
+        
+        # Try to parse the JSON
+        try:
+            flashcards = json.loads(content)
+        except json.JSONDecodeError as e:
+            print(f"JSON parsing error: {e}")
+            print(f"Raw content: {content}")
+            # Create a fallback flashcard structure
+            flashcards = [{
+                "id": "1",
+                "question": "What is the main topic of the text?",
+                "answer": "The main topic is...",
+                "difficulty": 1,
+                "hint": "Look at the introduction"
+            }]
+        
+        return {"flashcards": flashcards}
+        
+    except Exception as e:
+        print(f"Error in generate_flashcards: {str(e)}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
