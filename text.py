@@ -2073,8 +2073,6 @@ def get_summary_of_chats():
     # Calculate total sentiment frequency
     sentiment_frequency = {sentiment: sum(1 for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}) if entry["sentiment"] == sentiment) for sentiment in set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}}))}
     
-    # Calculate average sentiment frequency
-    average_sentiment_frequency = {sentiment: count / total_messages for sentiment, count in sentiment_frequency.items()}
     
     # Calculate total sentiment diversity
     sentiment_diversity = len(set(entry["sentiment"] for entry in collection.find({"email": "sh33thal24@gmail.com", "sentiment": {"$exists": True}})))

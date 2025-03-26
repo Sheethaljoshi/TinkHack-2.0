@@ -33,20 +33,26 @@ const OnboardingModal: React.FC = () => {
     }
   };
   
-  const handleStartQuiz = () => {
+  const handleTakeQuiz = () => {
     // Hide intro, show quiz
     setShowIntro(false);
     setShowQuiz(true);
   };
   
-  const handleSkipQuiz = () => {
-    // Default to visual learning style
-    localStorage.setItem('learningStyle', 'visual');
-    localStorage.setItem('hasCompletedOnboarding', 'true');
+  const handleStartLearning = () => {
+    // If user already has a learning style, redirect them
+    const learningStyle = localStorage.getItem('learningStyle');
     
-    // Close modal and redirect
-    setShowModal(false);
-    router.push('/learn_visual');
+    if (learningStyle) {
+      localStorage.setItem('hasCompletedOnboarding', 'true');
+      setShowModal(false);
+      
+      const route = learningStyle === 'auditory' ? '/learn_audio' : '/learn_visual';
+      router.push(route);
+    } else {
+      // Otherwise, show the quiz
+      handleTakeQuiz();
+    }
   };
   
   if (!showModal) {
@@ -73,14 +79,14 @@ const OnboardingModal: React.FC = () => {
           
           <div className="flex flex-col space-y-3">
             <button 
-              onClick={handleStartQuiz}
+              onClick={handleTakeQuiz}
               className="w-full py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
             >
               Take the Quiz
             </button>
             
             <button 
-              onClick={handleSkipQuiz}
+              onClick={handleStartLearning}
               className="w-full py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition"
             >
               Start Learning

@@ -54,20 +54,6 @@ const Modal1: React.FC<ModalProps> = ({
     }
   };
 
-  const handleStartLearning = () => {
-    // Get user's learning style from localStorage
-    const learningStyle = localStorage.getItem('learningStyle');
-    
-    // Set default to visual if not found
-    if (!learningStyle) {
-      localStorage.setItem('learningStyle', 'visual');
-    }
-    
-    // Redirect based on learning style
-    const route = learningStyle === 'auditory' ? '/learn_audio' : '/learn_visual';
-    router.push(route);
-  };
-
   const handleSubmit2 = async () => {
     const formData = new FormData();
     formData.append("email", "sh33thal24@gmail.com");
@@ -118,7 +104,7 @@ const Modal1: React.FC<ModalProps> = ({
                   <div className="w-60 rounded-xl">
                     <img src={image_url} className="object-cover w-full h-full" />
                   </div>
-                  <button className="btn w-64 bg-success mr-6 mt-4" onClick={handleStartLearning}>
+                  <button className="btn w-64 bg-success mr-6 mt-4" onClick={() => router.push("/learn_audio")}>
                     Start learning
                   </button>
                   <button className="btn w-64 bg-warning mr-6 mt-4" onClick={handleSubmit2}>
